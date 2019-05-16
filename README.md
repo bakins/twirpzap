@@ -12,7 +12,7 @@ Create server hooks:
 
 ```go
 import (
-	"github.com/twitchtv/twirp/example"
+    "github.com/twitchtv/twirp/example"
     "go.uber.org/zap"
     "github.com/bakins/twirpzap"
 )
