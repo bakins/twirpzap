@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/twitchtv/twirp"
+	"github.com/twitchtv/twirp/ctxsetters"
 	"github.com/twitchtv/twirp/example"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -36,7 +37,6 @@ func TestLogger(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-
 			var buf bytes.Buffer
 			l := newLogger(&buf)
 
@@ -53,10 +53,35 @@ func TestLogger(t *testing.T) {
 			}
 
 			data := buf.String()
-			require.Contains(t, data, `"twirp.status":"`+test.status+`"`)
-			require.Contains(t, data, `"twirp.service":"Haberdasher"`)
-			require.Contains(t, data, `"twirp.method":"MakeHat"`)
+			require.Contains(t, data, `"twirp_status":"`+test.status+`"`)
+			require.Contains(t, data, `"twirp_service":"Haberdasher"`)
+			require.Contains(t, data, `"twirp_method":"MakeHat"`)
 		})
+	}
+}
+
+func BenchmarkServerHooks(b *testing.B) {
+	hooks := ServerHooks(nullLogger)
+
+	parent := ctxsetters.WithMethodName(context.Background(), "MakeHat")
+	parent = ctxsetters.WithServiceName(parent, "Haberdasher")
+	parent = ctxsetters.WithPackageName(parent, "twitch.twirp.example")
+	parent = ctxsetters.WithStatusCode(parent, http.StatusOK)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		ctx, err := hooks.RequestReceived(parent)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		ctx, err = hooks.RequestRouted(ctx)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		hooks.ResponseSent(ctx)
 	}
 }
 
